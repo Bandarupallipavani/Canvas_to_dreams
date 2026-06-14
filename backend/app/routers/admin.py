@@ -70,7 +70,8 @@ async def create_product(
         is_available=True,
     )
     db.add(product)
-    await db.flush()
+    await db.commit()  # FIX: was missing
+    await db.refresh(product)
     return product_to_dict(product)
 
 @router.put("/products/{product_id}")
@@ -89,6 +90,8 @@ async def update_product(
         setattr(product, field, value)
     product.updated_at = datetime.utcnow()
     db.add(product)
+    await db.commit()  # FIX: was missing
+    await db.refresh(product)
     return product_to_dict(product)
 
 @router.patch("/products/{product_id}/toggle")
@@ -103,6 +106,7 @@ async def toggle_product(
         raise HTTPException(status_code=404, detail="Product not found")
     product.is_available = not product.is_available
     db.add(product)
+    await db.commit()  # FIX: was missing
     return {"is_available": product.is_available}
 
 @router.delete("/products/{product_id}")
@@ -112,6 +116,7 @@ async def delete_product(
     db: AsyncSession = Depends(get_db)
 ):
     await db.execute(delete(Product).where(Product.id == product_id))
+    await db.commit()  # FIX: was missing
     return {"message": "Product deleted"}
 
 # ── Order Management ──────────────────────────────────────
@@ -143,6 +148,8 @@ async def update_order(
         order.notes = data.notes
     order.updated_at = datetime.utcnow()
     db.add(order)
+    await db.commit()  # FIX: was missing
+    await db.refresh(order)
     return order_to_dict(order)
 
 # ── Users ─────────────────────────────────────────────────

@@ -84,20 +84,24 @@ async def checkout(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
+    # Fetch all products in one query (fixes N+1 slow loading)
+    product_ids = [item.product_id for item in cart_items]
+    prod_result = await db.execute(select(Product).where(Product.id.in_(product_ids)))
+    products_map = {str(p.id): p for p in prod_result.scalars().all()}
+
     subtotal = 0.0
     order_items_data = []
 
     for cart_item in cart_items:
-        prod_result = await db.execute(select(Product).where(Product.id == cart_item.product_id))
-        product = prod_result.scalar_one_or_none()
+        product = products_map.get(str(cart_item.product_id))
         if not product or product.stock < cart_item.quantity:
             raise HTTPException(status_code=400, detail=f"'{product.title if product else 'Item'}' is unavailable")
         line_total = product.price * cart_item.quantity
         subtotal += line_total
         order_items_data.append((product, cart_item.quantity, line_total))
 
-    shipping_cost = 0.0 if subtotal >= 2000 else 150.0  # Free shipping above ₹2000
-    tax = round(subtotal * 0.00, 2)  # 0% tax (adjust as needed)
+    shipping_cost = 0.0 if subtotal >= 2000 else 150.0
+    tax = round(subtotal * 0.00, 2)
     total = subtotal + shipping_cost + tax
 
     # Create order
@@ -121,7 +125,7 @@ async def checkout(
         payment_status=PaymentStatus.pending,
     )
     db.add(order)
-    await db.flush()  # Get order.id
+    await db.flush()  # Get order.id before inserting items
 
     for product, qty, line_total in order_items_data:
         order_item = OrderItem(
@@ -143,7 +147,7 @@ async def checkout(
             import razorpay
             client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
             rz_order = client.order.create({
-                "amount": int(total * 100),  # paise
+                "amount": int(total * 100),
                 "currency": "INR",
                 "receipt": order.order_number,
             })
@@ -153,7 +157,6 @@ async def checkout(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Payment gateway error: {str(e)}")
 
-    # Stripe payment intent
     elif data.payment_method == "stripe" and STRIPE_SECRET_KEY:
         try:
             import stripe
@@ -171,10 +174,10 @@ async def checkout(
     elif data.payment_method == "cod":
         order.status = OrderStatus.confirmed
         order.payment_status = PaymentStatus.pending
-        # Clear cart for COD immediately
         await db.execute(delete(CartItem).where(CartItem.user_id == current_user.id))
 
     db.add(order)
+    await db.commit()  # FIX: was missing — order was never saved to DB
     return response
 
 @router.post("/verify-payment")
@@ -209,6 +212,7 @@ async def verify_payment(
 
     # Clear cart
     await db.execute(delete(CartItem).where(CartItem.user_id == current_user.id))
+    await db.commit()  # FIX: was missing
     return {"message": "Payment verified", "order_number": order.order_number}
 
 @router.get("/my-orders")

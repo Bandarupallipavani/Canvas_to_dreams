@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, in_
 from app.database import get_db
 from app.models.cart import CartItem
 from app.models.product import Product
@@ -19,16 +19,26 @@ async def get_cart(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    # Get all cart items in one query
     result = await db.execute(
         select(CartItem).where(CartItem.user_id == current_user.id)
     )
     items = result.scalars().all()
 
+    if not items:
+        return {"items": [], "subtotal": 0, "count": 0}
+
+    # Fetch all products in a single query (fixes N+1 slow loading)
+    product_ids = [item.product_id for item in items]
+    prod_result = await db.execute(
+        select(Product).where(Product.id.in_(product_ids))
+    )
+    products_map = {str(p.id): p for p in prod_result.scalars().all()}
+
     cart_data = []
     subtotal = 0
     for item in items:
-        prod_result = await db.execute(select(Product).where(Product.id == item.product_id))
-        product = prod_result.scalar_one_or_none()
+        product = products_map.get(str(item.product_id))
         if product:
             line_total = product.price * item.quantity
             subtotal += line_total
@@ -78,6 +88,7 @@ async def add_to_cart(
         )
         db.add(cart_item)
 
+    await db.commit()  # FIX: was missing — cart was never saved
     return {"message": "Added to cart"}
 
 @router.delete("/remove/{item_id}")
@@ -92,6 +103,7 @@ async def remove_from_cart(
             CartItem.user_id == current_user.id
         )
     )
+    await db.commit()
     return {"message": "Removed from cart"}
 
 @router.delete("/clear")
@@ -100,4 +112,5 @@ async def clear_cart(
     db: AsyncSession = Depends(get_db)
 ):
     await db.execute(delete(CartItem).where(CartItem.user_id == current_user.id))
+    await db.commit()
     return {"message": "Cart cleared"}
