@@ -44,6 +44,17 @@ export const useCartStore = create(
         const updated = get().items.filter(i => i.id !== id)
         set({ items: updated, count: updated.length })
       },
+      updateQuantity: (id, quantity) => {
+        if (quantity <= 0) {
+          const updated = get().items.filter(i => i.id !== id)
+          set({ items: updated, count: updated.length })
+        } else {
+          const updated = get().items.map(i =>
+            i.id === id ? { ...i, quantity, line_total: i.price * quantity } : i
+          )
+          set({ items: updated })
+        }
+      },
       clearCart: () => set({ items: [], count: 0 }),
       getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
     }),

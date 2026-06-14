@@ -17,12 +17,26 @@ export default function ProductCard({ product }) {
       navigate('/login')
       return
     }
+    // Optimistic Update
+    addItem(product)
+    toast.success('Added to cart!')
     try {
       await cartAPI.add(product.id)
-      addItem(product)
-      toast.success('Added to cart!')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add to cart')
+      // Rollback
+      const existing = useCartStore.getState().items.find(i => i.product_id === product.id)
+      if (existing) {
+        if (existing.quantity > 1) {
+          const updated = useCartStore.getState().items.map(i =>
+            i.product_id === product.id ? { ...i, quantity: i.quantity - 1 } : i
+          )
+          useCartStore.setState({ items: updated })
+        } else {
+          const updated = useCartStore.getState().items.filter(i => i.product_id !== product.id)
+          useCartStore.setState({ items: updated, count: updated.length })
+        }
+      }
     }
   }
 

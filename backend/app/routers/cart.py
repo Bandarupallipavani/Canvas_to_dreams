@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, in_
+from sqlalchemy import select, delete
 from app.database import get_db
+import uuid
 from app.models.cart import CartItem
 from app.models.product import Product
 from app.models.user import User
@@ -91,6 +92,48 @@ async def add_to_cart(
     await db.commit()  # FIX: was missing — cart was never saved
     return {"message": "Added to cart"}
 
+class UpdateCartRequest(BaseModel):
+    quantity: int
+
+@router.put("/update/{item_id}")
+async def update_cart_quantity(
+    item_id: str,
+    data: UpdateCartRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(CartItem).where(
+            CartItem.id == uuid.UUID(item_id),
+            CartItem.user_id == current_user.id
+        )
+    )
+    cart_item = result.scalar_one_or_none()
+    if not cart_item:
+        raise HTTPException(status_code=404, detail="Cart item not found")
+
+    prod_result = await db.execute(
+        select(Product).where(Product.id == cart_item.product_id)
+    )
+    product = prod_result.scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if data.quantity <= 0:
+        await db.execute(
+            delete(CartItem).where(
+                CartItem.id == uuid.UUID(item_id),
+                CartItem.user_id == current_user.id
+            )
+        )
+        await db.commit()
+        return {"message": "Removed from cart"}
+
+    cart_item.quantity = min(data.quantity, product.stock)
+    db.add(cart_item)
+    await db.commit()
+    return {"message": "Cart updated", "quantity": cart_item.quantity}
+
 @router.delete("/remove/{item_id}")
 async def remove_from_cart(
     item_id: str,
@@ -99,7 +142,7 @@ async def remove_from_cart(
 ):
     await db.execute(
         delete(CartItem).where(
-            CartItem.id == item_id,
+            CartItem.id == uuid.UUID(item_id),
             CartItem.user_id == current_user.id
         )
     )

@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 
 export default function CartPage() {
   const { isAuthenticated } = useAuthStore()
-  const { setCart, removeItem } = useCartStore()
+  const { setCart, removeItem, updateQuantity } = useCartStore()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -23,13 +23,78 @@ export default function CartPage() {
   }, [data])
 
   const handleRemove = async (itemId) => {
+    const previousCart = queryClient.getQueryData(['cart'])
+
+    // 1. Optimistically update Zustand store (for Navbar count)
+    removeItem(itemId)
+
+    // 2. Optimistically update React Query cache (for Page list & totals)
+    queryClient.setQueryData(['cart'], (oldData) => {
+      if (!oldData) return oldData
+      const updatedItems = oldData.items.filter(item => item.id !== itemId)
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.line_total, 0)
+      return {
+        ...oldData,
+        items: updatedItems,
+        subtotal: newSubtotal
+      }
+    })
+
+    toast.success('Removed from cart')
+
+    // 3. Trigger API call in background
     try {
       await cartAPI.remove(itemId)
-      removeItem(itemId)
-      refetch()
-      toast.success('Removed from cart')
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
     } catch {
       toast.error('Failed to remove')
+      // Rollback Zustand
+      if (previousCart?.items) setCart(previousCart.items)
+      // Rollback React Query
+      queryClient.setQueryData(['cart'], previousCart)
+    }
+  }
+
+  const handleUpdateQuantity = async (itemId, newQty) => {
+    // 1. Optimistically update Zustand local store (for cart badge)
+    updateQuantity(itemId, newQty)
+
+    // 2. Optimistically update React Query cache (for page list & totals)
+    queryClient.setQueryData(['cart'], (oldData) => {
+      if (!oldData) return oldData
+      
+      let updatedItems = oldData.items.map(item => {
+        if (item.id === itemId) {
+          const qty = Math.max(0, newQty)
+          return {
+            ...item,
+            quantity: qty,
+            line_total: item.price * qty
+          }
+        }
+        return item
+      })
+
+      if (newQty <= 0) {
+        updatedItems = updatedItems.filter(item => item.id !== itemId)
+      }
+
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.line_total, 0)
+
+      return {
+        ...oldData,
+        items: updatedItems,
+        subtotal: newSubtotal
+      }
+    })
+
+    // 3. Trigger API update
+    try {
+      await cartAPI.update(itemId, newQty)
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update quantity')
+      refetch() // Rollback on failure
     }
   }
 
@@ -88,8 +153,27 @@ export default function CartPage() {
                 <Link to={`/shop/${item.slug}`} className="font-display font-semibold text-ink hover:text-canvas-700 transition-colors line-clamp-1">
                   {item.title}
                 </Link>
-                <p className="text-sm text-ink-muted mt-0.5">Qty: {item.quantity}</p>
-                <p className="text-canvas-700 font-bold mt-1">₹{item.line_total.toLocaleString('en-IN')}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-ink-muted">Qty:</span>
+                  <div className="flex items-center border border-canvas-200 rounded-md overflow-hidden bg-white">
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                      className="px-2 py-0.5 text-ink-muted hover:bg-canvas-50 hover:text-ink font-semibold transition-colors border-r border-canvas-200"
+                    >
+                      -
+                    </button>
+                    <span className="px-3 py-0.5 text-sm font-medium text-ink min-w-[24px] text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                      className="px-2 py-0.5 text-ink-muted hover:bg-canvas-50 hover:text-ink font-semibold transition-colors border-l border-canvas-200"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <p className="text-canvas-700 font-bold mt-1.5">₹{item.line_total.toLocaleString('en-IN')}</p>
                 {!item.in_stock && (
                   <p className="text-blush text-xs mt-1">⚠️ Low stock</p>
                 )}

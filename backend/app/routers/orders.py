@@ -10,7 +10,7 @@ from app.utils.auth import get_current_user
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-import random, string, os
+import random, string, os, uuid
 
 router = APIRouter()
 
@@ -187,7 +187,7 @@ async def verify_payment(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(Order).where(Order.id == data.order_id, Order.user_id == current_user.id)
+        select(Order).where(Order.id == uuid.UUID(data.order_id), Order.user_id == current_user.id)
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -233,7 +233,7 @@ async def get_order(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.user_id == current_user.id)
+        select(Order).where(Order.id == uuid.UUID(order_id), Order.user_id == current_user.id)
     )
     order = result.scalar_one_or_none()
     if not order:

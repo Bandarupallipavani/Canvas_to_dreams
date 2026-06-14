@@ -10,7 +10,6 @@ export default function ProductPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const [activeImage, setActiveImage] = useState(0)
-  const [adding, setAdding] = useState(false)
   const { addItem } = useCartStore()
   const { isAuthenticated } = useAuthStore()
 
@@ -25,15 +24,26 @@ export default function ProductPage() {
       navigate('/login')
       return
     }
-    setAdding(true)
+    // Optimistic Update
+    addItem(product)
+    toast.success('Added to cart!')
     try {
       await cartAPI.add(product.id)
-      addItem(product)
-      toast.success('Added to cart!')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add')
-    } finally {
-      setAdding(false)
+      // Rollback
+      const existing = useCartStore.getState().items.find(i => i.product_id === product.id)
+      if (existing) {
+        if (existing.quantity > 1) {
+          const updated = useCartStore.getState().items.map(i =>
+            i.product_id === product.id ? { ...i, quantity: i.quantity - 1 } : i
+          )
+          useCartStore.setState({ items: updated })
+        } else {
+          const updated = useCartStore.getState().items.filter(i => i.product_id !== product.id)
+          useCartStore.setState({ items: updated, count: updated.length })
+        }
+      }
     }
   }
 
@@ -221,11 +231,11 @@ export default function ProductPage() {
           <div className="flex gap-3">
             <button
               onClick={handleAddToCart}
-              disabled={product.stock === 0 || adding}
+              disabled={product.stock === 0}
               className="btn-outline flex-1 flex items-center justify-center gap-2 disabled:opacity-40"
             >
               <ShoppingBag className="w-4 h-4" />
-              {adding ? 'Adding...' : 'Add to Cart'}
+              Add to Cart
             </button>
             <button
               onClick={handleBuyNow}

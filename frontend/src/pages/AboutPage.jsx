@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Instagram, Youtube, Palette, Heart, Star } from 'lucide-react'
 
-const INSTA_URL = 'https://www.instagram.com/canvas_to_dreams/'
-const YT_URL    = 'https://www.youtube.com/@canvas_to_dreams'
+const INSTA_URL = 'https://www.instagram.com/canvas_into_dreams?utm_source=qr&igsh=bTc3emRmZ2ZmZXQ4'
+const YT_URL    = 'https://youtube.com/@artbook2004?si=DJ8Fd0aWQ7EX5xYJ'
 
 export default function AboutPage() {
   return (

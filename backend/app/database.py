@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import NullPool
 import os
+import uuid
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -14,14 +16,13 @@ if DATABASE_URL.startswith("postgres://"):
 
 engine = create_async_engine(
     DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=300,
+    poolclass=NullPool,
     echo=False,
     connect_args={
         "ssl": "require",
         "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
     },
 )
 
