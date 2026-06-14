@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShoppingBag, ArrowLeft, Instagram, Youtube, ZoomIn, Share2, CheckCircle } from 'lucide-react'
 import { productsAPI, cartAPI } from '../utils/api'
+import { getOptimizedImageUrl } from '../utils/image'
 import { useCartStore, useAuthStore } from '../store'
 import toast from 'react-hot-toast'
 
@@ -12,6 +13,7 @@ export default function ProductPage() {
   const [activeImage, setActiveImage] = useState(0)
   const { addItem } = useCartStore()
   const { isAuthenticated } = useAuthStore()
+  const queryClient = useQueryClient()
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
@@ -24,14 +26,51 @@ export default function ProductPage() {
       navigate('/login')
       return
     }
-    // Optimistic Update
+    // Optimistic Update (Zustand)
     addItem(product)
+
+    // Optimistic Update (React Query Cache)
+    queryClient.setQueryData(['cart'], (oldData) => {
+      const cartItems = oldData?.items || []
+      const existing = cartItems.find(item => item.product_id === product.id)
+      let updatedItems
+      if (existing) {
+        updatedItems = cartItems.map(item =>
+          item.product_id === product.id
+            ? { ...item, quantity: item.quantity + 1, line_total: item.price * (item.quantity + 1) }
+            : item
+        )
+      } else {
+        updatedItems = [
+          ...cartItems,
+          {
+            id: `temp-${product.id}`,
+            product_id: product.id,
+            title: product.title,
+            price: product.price,
+            quantity: 1,
+            line_total: product.price,
+            image: product.images?.[0] || null,
+            slug: product.slug,
+            in_stock: true
+          }
+        ]
+      }
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.line_total, 0)
+      return {
+        ...oldData,
+        items: updatedItems,
+        subtotal: newSubtotal
+      }
+    })
+
     toast.success('Added to cart!')
     try {
       await cartAPI.add(product.id)
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add')
-      // Rollback
+      // Rollback Zustand
       const existing = useCartStore.getState().items.find(i => i.product_id === product.id)
       if (existing) {
         if (existing.quantity > 1) {
@@ -44,6 +83,8 @@ export default function ProductPage() {
           useCartStore.setState({ items: updated, count: updated.length })
         }
       }
+      // Rollback React Query Cache
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
     }
   }
 
@@ -102,7 +143,7 @@ export default function ProductPage() {
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-canvas-50 group">
             {images[activeImage] ? (
               <img
-                src={images[activeImage]}
+                src={getOptimizedImageUrl(images[activeImage], 800)}
                 alt={product.title}
                 className="w-full h-full object-cover"
               />
@@ -130,7 +171,7 @@ export default function ProductPage() {
                   }`}
                 >
                   {img ? (
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={getOptimizedImageUrl(img, 150)} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-canvas-100 flex items-center justify-center">
                       <span className="text-xl">🎨</span>

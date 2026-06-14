@@ -25,34 +25,35 @@ export const useCartStore = create(
       items: [],
       count: 0,
 
-      setCart: (items) => set({ items, count: items.length }),
+      setCart: (items) => set({ items, count: items.reduce((sum, i) => sum + i.quantity, 0) }),
       addItem: (item) => {
-        const existing = get().items.find(i => i.product_id === item.product_id)
+        const targetProductId = item.product_id || item.id
+        const existing = get().items.find(i => (i.product_id || i.id) === targetProductId)
+        let updated
         if (existing) {
-          const updated = get().items.map(i =>
-            i.product_id === item.product_id
+          updated = get().items.map(i =>
+            (i.product_id || i.id) === targetProductId
               ? { ...i, quantity: i.quantity + 1 }
               : i
           )
-          set({ items: updated, count: updated.length })
         } else {
-          const updated = [...get().items, { ...item, quantity: 1 }]
-          set({ items: updated, count: updated.length })
+          updated = [...get().items, { ...item, product_id: targetProductId, quantity: 1 }]
         }
+        set({ items: updated, count: updated.reduce((sum, i) => sum + i.quantity, 0) })
       },
       removeItem: (id) => {
         const updated = get().items.filter(i => i.id !== id)
-        set({ items: updated, count: updated.length })
+        set({ items: updated, count: updated.reduce((sum, i) => sum + i.quantity, 0) })
       },
       updateQuantity: (id, quantity) => {
         if (quantity <= 0) {
           const updated = get().items.filter(i => i.id !== id)
-          set({ items: updated, count: updated.length })
+          set({ items: updated, count: updated.reduce((sum, i) => sum + i.quantity, 0) })
         } else {
           const updated = get().items.map(i =>
             i.id === id ? { ...i, quantity, line_total: i.price * quantity } : i
           )
-          set({ items: updated })
+          set({ items: updated, count: updated.reduce((sum, i) => sum + i.quantity, 0) })
         }
       },
       clearCart: () => set({ items: [], count: 0 }),

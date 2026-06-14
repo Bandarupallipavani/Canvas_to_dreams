@@ -4,27 +4,68 @@ import { cartAPI } from '../../utils/api'
 import { useCartStore, useAuthStore } from '../../store'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { getOptimizedImageUrl } from '../../utils/image'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function ProductCard({ product }) {
   const { addItem } = useCartStore()
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const handleAddToCart = async (e) => {
     e.preventDefault()
+    e.stopPropagation()
     if (!isAuthenticated) {
       toast.error('Please sign in to add to cart')
       navigate('/login')
       return
     }
-    // Optimistic Update
+    // Optimistic Update (Zustand)
     addItem(product)
+
+    // Optimistic Update (React Query Cache)
+    queryClient.setQueryData(['cart'], (oldData) => {
+      const cartItems = oldData?.items || []
+      const existing = cartItems.find(item => item.product_id === product.id)
+      let updatedItems
+      if (existing) {
+        updatedItems = cartItems.map(item =>
+          item.product_id === product.id
+            ? { ...item, quantity: item.quantity + 1, line_total: item.price * (item.quantity + 1) }
+            : item
+        )
+      } else {
+        updatedItems = [
+          ...cartItems,
+          {
+            id: `temp-${product.id}`,
+            product_id: product.id,
+            title: product.title,
+            price: product.price,
+            quantity: 1,
+            line_total: product.price,
+            image: product.images?.[0] || null,
+            slug: product.slug,
+            in_stock: true
+          }
+        ]
+      }
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + item.line_total, 0)
+      return {
+        ...oldData,
+        items: updatedItems,
+        subtotal: newSubtotal
+      }
+    })
+
     toast.success('Added to cart!')
     try {
       await cartAPI.add(product.id)
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add to cart')
-      // Rollback
+      // Rollback Zustand
       const existing = useCartStore.getState().items.find(i => i.product_id === product.id)
       if (existing) {
         if (existing.quantity > 1) {
@@ -37,6 +78,8 @@ export default function ProductCard({ product }) {
           useCartStore.setState({ items: updated, count: updated.length })
         }
       }
+      // Rollback React Query Cache
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
     }
   }
 
@@ -50,7 +93,7 @@ export default function ProductCard({ product }) {
       <div className="relative aspect-[4/5] overflow-hidden bg-canvas-50">
         {product.images?.[0] ? (
           <img
-            src={product.images[0]}
+            src={getOptimizedImageUrl(product.images[0], 600)}
             alt={product.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
@@ -74,8 +117,8 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/20 transition-all duration-300 flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100">
+        {/* Hover overlay (desktop only) */}
+        <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/20 transition-all duration-300 hidden md:flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100">
           <button
             onClick={handleAddToCart}
             disabled={product.stock === 0}
@@ -107,6 +150,18 @@ export default function ProductCard({ product }) {
             <Eye className="w-3 h-3" />
             <span>{product.views}</span>
           </div>
+        </div>
+
+        {/* Mobile Add to Cart Button */}
+        <div className="mt-3 md:hidden">
+          <button
+            onClick={handleAddToCart}
+            disabled={product.stock === 0}
+            className="btn-primary w-full py-2 px-3 text-xs flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            {product.stock === 0 ? 'Sold Out' : 'Add to Cart'}
+          </button>
         </div>
       </div>
     </Link>

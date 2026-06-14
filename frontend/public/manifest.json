@@ -1,0 +1,22 @@
+{
+  "short_name": "CanvasToDreams",
+  "name": "Canvas to Dreams",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#fdf8f0",
+  "theme_color": "#d4892a",
+  "display": "standalone",
+  "orientation": "portrait"
+}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2, ShoppingBag, ArrowRight, Tag } from 'lucide-react'
 import { cartAPI } from '../utils/api'
+import { getOptimizedImageUrl } from '../utils/image'
 import { useCartStore, useAuthStore } from '../store'
 import toast from 'react-hot-toast'
 
@@ -121,6 +122,7 @@ export default function CartPage() {
   const subtotal = data?.subtotal || 0
   const shipping = subtotal >= 2000 ? 0 : 150
   const total = subtotal + shipping
+  const totalCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   if (items.length === 0) return (
     <div className="max-w-2xl mx-auto px-4 py-20 text-center">
@@ -134,7 +136,7 @@ export default function CartPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="font-display text-3xl font-bold text-ink mb-8">
-        Your Cart <span className="text-ink-muted font-normal text-xl">({items.length} {items.length === 1 ? 'item' : 'items'})</span>
+        Your Cart <span className="text-ink-muted font-normal text-xl">({totalCount} {totalCount === 1 ? 'item' : 'items'})</span>
       </h1>
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -144,7 +146,7 @@ export default function CartPage() {
             <div key={item.id} className="card p-4 flex gap-4">
               <Link to={`/shop/${item.slug}`} className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-canvas-50">
                 {item.image ? (
-                  <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                  <img src={getOptimizedImageUrl(item.image, 150)} alt={item.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>
                 )}

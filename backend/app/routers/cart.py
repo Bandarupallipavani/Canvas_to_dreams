@@ -63,7 +63,7 @@ async def add_to_cart(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    prod_result = await db.execute(select(Product).where(Product.id == data.product_id))
+    prod_result = await db.execute(select(Product).where(Product.id == uuid.UUID(data.product_id)))
     product = prod_result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -73,7 +73,7 @@ async def add_to_cart(
     existing_result = await db.execute(
         select(CartItem).where(
             CartItem.user_id == current_user.id,
-            CartItem.product_id == data.product_id
+            CartItem.product_id == uuid.UUID(data.product_id)
         )
     )
     existing = existing_result.scalar_one_or_none()
@@ -84,7 +84,7 @@ async def add_to_cart(
     else:
         cart_item = CartItem(
             user_id=current_user.id,
-            product_id=data.product_id,
+            product_id=uuid.UUID(data.product_id),
             quantity=min(data.quantity, product.stock)
         )
         db.add(cart_item)
