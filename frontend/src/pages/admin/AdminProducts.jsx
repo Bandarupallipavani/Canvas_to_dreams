@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, X, ImagePlus } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, ImagePlus } from 'lucide-react'
 import { adminAPI } from '../../utils/api'
 import toast from 'react-hot-toast'
 
@@ -12,6 +12,22 @@ const EMPTY_FORM = {
 
 const CATEGORIES = ['Abstract', 'Portrait', 'Landscape', 'Floral', 'Wildlife', 'Spiritual', 'Contemporary', 'Traditional', 'Other']
 const MEDIUMS = ['Oil', 'Acrylic', 'Watercolor', 'Gouache', 'Mixed Media', 'Charcoal', 'Pastel', 'Digital']
+
+// ── Moved OUTSIDE component so it never remounts on re-render ──
+function FormField({ label, field, type = 'text', value, onChange, ...rest }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-ink mb-1">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(field, e.target.value)}
+        className="input"
+        {...rest}
+      />
+    </div>
+  )
+}
 
 export default function AdminProducts() {
   const qc = useQueryClient()
@@ -26,7 +42,22 @@ export default function AdminProducts() {
     queryFn: () => adminAPI.listProducts().then(r => r.data),
   })
 
-  const update = (f) => (e) => setForm(p => ({ ...p, [f]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  // Stable handler — won't cause Field to remount
+  const handleFieldChange = useCallback((field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  const handleCheckbox = (e) => {
+    setForm(prev => ({ ...prev, is_featured: e.target.checked }))
+  }
+
+  const handleSelect = (field) => (e) => {
+    setForm(prev => ({ ...prev, [field]: e.target.value }))
+  }
+
+  const handleTextarea = (e) => {
+    setForm(prev => ({ ...prev, description: e.target.value }))
+  }
 
   const openCreate = () => { setForm(EMPTY_FORM); setEditProduct(null); setShowForm(true) }
   const openEdit = (p) => {
@@ -53,7 +84,7 @@ export default function AdminProducts() {
       setForm(p => ({ ...p, images: [...(p.images || []), ...uploaded] }))
       toast.success(`${uploaded.length} image(s) uploaded`)
     } catch {
-      toast.error('Image upload failed')
+      toast.error('Image upload failed — check Cloudinary config')
     } finally {
       setUploading(false)
     }
@@ -74,20 +105,18 @@ export default function AdminProducts() {
         stock: parseInt(form.stock),
         tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       }
-
       if (editProduct) {
         await adminAPI.updateProduct(editProduct.id, payload)
         toast.success('Painting updated!')
       } else {
         await adminAPI.createProduct(payload)
-        toast.success('Painting added!')
+        toast.success('Painting added to gallery!')
       }
-
       qc.invalidateQueries(['admin-products'])
       qc.invalidateQueries(['products'])
       closeForm()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to save')
+      toast.error(err.response?.data?.detail || 'Failed to save painting')
     } finally {
       setSaving(false)
     }
@@ -97,8 +126,8 @@ export default function AdminProducts() {
     try {
       await adminAPI.toggleProduct(product.id)
       qc.invalidateQueries(['admin-products'])
-      toast.success(product.is_available ? 'Painting hidden' : 'Painting visible')
-    } catch { toast.error('Failed to toggle') }
+      toast.success(product.is_available ? 'Painting hidden from shop' : 'Painting visible in shop')
+    } catch { toast.error('Failed to toggle visibility') }
   }
 
   const handleDelete = async (product) => {
@@ -109,13 +138,6 @@ export default function AdminProducts() {
       toast.success('Painting deleted')
     } catch { toast.error('Failed to delete') }
   }
-
-  const Field = ({ label, field, type = 'text', ...rest }) => (
-    <div>
-      <label className="block text-sm font-medium text-ink mb-1">{label}</label>
-      <input type={type} value={form[field]} onChange={update(field)} className="input" {...rest} />
-    </div>
-  )
 
   return (
     <div>
@@ -148,22 +170,23 @@ export default function AdminProducts() {
                 [...Array(5)].map((_, i) => (
                   <tr key={i}>{[...Array(6)].map((_, j) => (
                     <td key={j} className="px-5 py-4">
-                      <div className="h-4 bg-canvas-100 rounded animate-pulse w-20" />
+                      <div className="h-4 bg-canvas-100 rounded w-20" style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
                     </td>
                   ))}</tr>
                 ))
               ) : products.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-12 text-ink-muted">
-                  No paintings yet. Add your first one!
+                  No paintings yet — add your first one!
                 </td></tr>
               ) : products.map(p => (
                 <tr key={p.id} className="hover:bg-canvas-50 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-canvas-100 flex-shrink-0">
-                        {p.images?.[0] ? (
-                          <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
-                        ) : <div className="w-full h-full flex items-center justify-center text-lg">🎨</div>}
+                        {p.images?.[0]
+                          ? <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center text-lg">🎨</div>
+                        }
                       </div>
                       <div>
                         <p className="font-medium text-ink line-clamp-1">{p.title}</p>
@@ -234,60 +257,72 @@ export default function AdminProducts() {
                     <div key={i} className="relative w-20 h-20">
                       <img src={img} alt="" className="w-full h-full object-cover rounded-lg" />
                       <button type="button" onClick={() => removeImage(i)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blush text-white rounded-full flex items-center justify-center text-xs">
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blush text-white rounded-full flex items-center justify-center">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
-                  <label className={`w-20 h-20 border-2 border-dashed border-canvas-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-canvas-400 transition-colors ${uploading ? 'opacity-50' : ''}`}>
+                  <label className={`w-20 h-20 border-2 border-dashed border-canvas-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-canvas-400 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <ImagePlus className="w-5 h-5 text-canvas-400 mb-1" />
                     <span className="text-xs text-ink-muted">{uploading ? 'Uploading...' : 'Upload'}</span>
-                    <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
+                    <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
                   </label>
                 </div>
               </div>
 
-              <Field label="Title *" field="title" required placeholder="e.g. Morning Serenity" />
+              {/* All fields use stable FormField component */}
+              <FormField label="Title *" field="title" value={form.title} onChange={handleFieldChange} required placeholder="e.g. Morning Serenity" />
+
               <div>
                 <label className="block text-sm font-medium text-ink mb-1">Description *</label>
-                <textarea value={form.description} onChange={update('description')} required rows={3}
-                  placeholder="Describe the painting, its inspiration, mood..." className="input resize-none" />
+                <textarea
+                  value={form.description}
+                  onChange={handleTextarea}
+                  required
+                  rows={3}
+                  placeholder="Describe the painting, its inspiration, mood..."
+                  className="input resize-none"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Price (₹) *" field="price" type="number" required placeholder="2500" min="0" />
-                <Field label="Original Price (₹)" field="original_price" type="number" placeholder="3500" min="0" />
+                <FormField label="Price (₹) *" field="price" type="number" value={form.price} onChange={handleFieldChange} required placeholder="2500" min="0" />
+                <FormField label="Original Price (₹)" field="original_price" type="number" value={form.original_price} onChange={handleFieldChange} placeholder="3500" min="0" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-ink mb-1">Category *</label>
-                  <select value={form.category} onChange={update('category')} required className="input">
-                    <option value="">Select...</option>
+                  <select value={form.category} onChange={handleSelect('category')} required className="input">
+                    <option value="">Select category...</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-ink mb-1">Medium</label>
-                  <select value={form.medium} onChange={update('medium')} className="input">
-                    <option value="">Select...</option>
+                  <select value={form.medium} onChange={handleSelect('medium')} className="input">
+                    <option value="">Select medium...</option>
                     {MEDIUMS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Size" field="size" placeholder='e.g. 12×16 inches' />
-                <Field label="Stock" field="stock" type="number" min="0" placeholder="1" />
+                <FormField label="Size" field="size" value={form.size} onChange={handleFieldChange} placeholder="e.g. 12×16 inches" />
+                <FormField label="Stock" field="stock" type="number" value={form.stock} onChange={handleFieldChange} min="0" placeholder="1" />
               </div>
 
-              <Field label="Tags (comma separated)" field="tags" placeholder="floral, blue, meditation" />
-              <Field label="Instagram URL" field="instagram_url" placeholder="https://instagram.com/p/..." />
-              <Field label="YouTube URL" field="youtube_url" placeholder="https://youtube.com/watch?v=..." />
+              <FormField label="Tags (comma separated)" field="tags" value={form.tags} onChange={handleFieldChange} placeholder="floral, blue, meditation" />
+              <FormField label="Instagram URL" field="instagram_url" value={form.instagram_url} onChange={handleFieldChange} placeholder="https://instagram.com/p/..." />
+              <FormField label="YouTube URL" field="youtube_url" value={form.youtube_url} onChange={handleFieldChange} placeholder="https://youtube.com/watch?v=..." />
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.is_featured} onChange={update('is_featured')}
-                  className="w-4 h-4 accent-canvas-600 rounded" />
+              <label className="flex items-center gap-3 cursor-pointer py-1">
+                <input
+                  type="checkbox"
+                  checked={form.is_featured}
+                  onChange={handleCheckbox}
+                  className="w-4 h-4 accent-canvas-600 rounded"
+                />
                 <span className="text-sm font-medium text-ink">Featured painting (shows on homepage)</span>
               </label>
 

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Instagram, Youtube, Palette, Heart, Star } from 'lucide-react'
 
+const INSTA_URL = 'https://www.instagram.com/canvas_to_dreams/'
+const YT_URL    = 'https://www.youtube.com/@canvas_to_dreams'
+
 export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -41,14 +44,14 @@ export default function AboutPage() {
               so you can watch each dream take shape on canvas.
             </p>
           </div>
-          <div className="flex gap-3 mt-6">
-            <a href="https://www.instagram.com/canvas_to_dreams" target="_blank" rel="noopener noreferrer"
+          <div className="flex gap-3 mt-6 flex-wrap">
+            <a href={INSTA_URL} target="_blank" rel="noopener noreferrer"
               className="btn-outline flex items-center gap-2 text-sm py-2 px-4">
-              <Instagram className="w-4 h-4" /> Instagram
+              <Instagram className="w-4 h-4" /> @canvas_to_dreams
             </a>
-            <a href="https://www.youtube.com/@canvas_to_dreams" target="_blank" rel="noopener noreferrer"
+            <a href={YT_URL} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-              <Youtube className="w-4 h-4" /> YouTube
+              <Youtube className="w-4 h-4" /> YouTube Channel
             </a>
           </div>
         </div>
@@ -58,8 +61,8 @@ export default function AboutPage() {
       <div className="grid md:grid-cols-3 gap-6 mb-16">
         {[
           { icon: Palette, title: '100% Original', desc: 'Every painting is one of a kind. No prints, no copies — only real, handcrafted art.' },
-          { icon: Heart, title: 'Painted with Love', desc: 'Each piece carries genuine emotion. Art is not just made here, it is felt.' },
-          { icon: Star, title: 'Quality First', desc: 'Premium materials, careful packing, and a commitment to delivering art that lasts.' },
+          { icon: Heart,   title: 'Painted with Love', desc: 'Each piece carries genuine emotion. Art is not just made here, it is felt.' },
+          { icon: Star,    title: 'Quality First', desc: 'Premium materials, careful packing, and a commitment to delivering art that lasts.' },
         ].map(({ icon: Icon, title, desc }) => (
           <div key={title} className="card p-6 text-center">
             <div className="w-12 h-12 bg-canvas-100 rounded-xl flex items-center justify-center mx-auto mb-4">

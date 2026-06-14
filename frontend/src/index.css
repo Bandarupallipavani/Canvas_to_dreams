@@ -13,36 +13,56 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-canvas-600 hover:bg-canvas-700 text-parchment font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95;
+    @apply bg-canvas-600 hover:bg-canvas-700 text-parchment font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 cursor-pointer;
   }
   .btn-outline {
-    @apply border-2 border-canvas-600 text-canvas-700 hover:bg-canvas-600 hover:text-parchment font-medium px-6 py-3 rounded-lg transition-all duration-200;
+    @apply border-2 border-canvas-600 text-canvas-700 hover:bg-canvas-600 hover:text-parchment font-medium px-6 py-3 rounded-lg transition-all duration-200 cursor-pointer;
   }
   .btn-ghost {
-    @apply text-ink-muted hover:text-ink hover:bg-canvas-50 px-4 py-2 rounded-lg transition-all duration-200;
+    @apply text-ink-muted hover:text-ink hover:bg-canvas-50 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer;
   }
   .card {
     @apply bg-white rounded-xl shadow-sm border border-canvas-100 overflow-hidden;
   }
   .input {
-    @apply w-full border border-canvas-200 rounded-lg px-4 py-2.5 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-canvas-400 focus:border-transparent transition-all;
+    @apply w-full border border-canvas-200 rounded-lg px-4 py-2.5 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-canvas-400 focus:border-transparent transition-all placeholder:text-ink-muted/60;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
 
-/* Smooth page transitions */
+/* Page fade-in */
 .page-enter {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.25s ease-out;
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Fast skeleton pulse — 1s is much snappier than Tailwind's default 2s */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* Smooth spin for loading buttons */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 0.7s linear infinite;
+}
+
 /* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: #fdf8f0; }
 ::-webkit-scrollbar-thumb { background: #ecc27e; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #d4892a; }
+
+/* Prevent layout shift on images */
+img { display: block; }

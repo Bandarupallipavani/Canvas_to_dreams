@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Palette, Instagram, Youtube, Mail, Heart } from 'lucide-react'
 
+const INSTA_URL = 'https://www.instagram.com/canvas_to_dreams/'
+const YT_URL    = 'https://www.youtube.com/@canvas_to_dreams'
+
 export default function Footer() {
   return (
     <footer className="bg-ink text-parchment-dark mt-16">
@@ -19,26 +22,19 @@ export default function Footer() {
               Original handcrafted art, made with love.
             </p>
             <div className="flex items-center gap-3 mt-5">
-              <a
-                href="https://www.instagram.com/canvas_to_dreams"
-                target="_blank"
-                rel="noopener noreferrer"
+              <a href={INSTA_URL} target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 bg-ink-light hover:bg-canvas-600 rounded-lg flex items-center justify-center transition-colors"
-              >
+                aria-label="Instagram">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a
-                href="https://www.youtube.com/@canvas_to_dreams"
-                target="_blank"
-                rel="noopener noreferrer"
+              <a href={YT_URL} target="_blank" rel="noopener noreferrer"
                 className="w-9 h-9 bg-ink-light hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors"
-              >
+                aria-label="YouTube">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a
-                href="mailto:hello@canvastodreams.in"
+              <a href="mailto:hello@canvastodreams.in"
                 className="w-9 h-9 bg-ink-light hover:bg-canvas-600 rounded-lg flex items-center justify-center transition-colors"
-              >
+                aria-label="Email">
                 <Mail className="w-4 h-4" />
               </a>
             </div>
@@ -49,10 +45,10 @@ export default function Footer() {
             <h3 className="font-display font-semibold text-parchment mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm text-canvas-200">
               {[
-                { to: '/shop', label: 'Browse Paintings' },
-                { to: '/about', label: 'About the Artist' },
+                { to: '/shop',      label: 'Browse Paintings' },
+                { to: '/about',     label: 'About the Artist' },
                 { to: '/my-orders', label: 'Track Order' },
-                { to: '/profile', label: 'My Account' },
+                { to: '/profile',   label: 'My Account' },
               ].map(l => (
                 <li key={l.to}>
                   <Link to={l.to} className="hover:text-canvas-400 transition-colors">
@@ -69,9 +65,9 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-canvas-200">
               <li>🎨 100% Original Paintings</li>
               <li>🚚 Free shipping on orders above ₹2000</li>
-              <li>📦 Carefully packaged & insured</li>
+              <li>📦 Carefully packaged &amp; insured</li>
               <li>↩️ Easy returns within 7 days</li>
-              <li>💳 Razorpay & Stripe secure payments</li>
+              <li>💳 Razorpay &amp; Stripe secure payments</li>
             </ul>
           </div>
         </div>
