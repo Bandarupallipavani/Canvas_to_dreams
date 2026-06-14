@@ -66,3 +66,11 @@
 
 /* Prevent layout shift on images */
 img { display: block; }
+
+/* Prevent text selection and caret browsing cursors on interactive buttons/links */
+a, button, [role="button"], select, .badge {
+  user-select: none;
+  -webkit-user-select: none;
+  caret-color: transparent;
+}
+

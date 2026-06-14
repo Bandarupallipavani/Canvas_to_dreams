@@ -151,8 +151,8 @@ export default function AdminProducts() {
         </button>
       </div>
 
-      {/* Product Table */}
-      <div className="card overflow-hidden">
+      {/* Product Table (Desktop only) */}
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -232,6 +232,103 @@ export default function AdminProducts() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List (shown only on mobile) */}
+      <div className="space-y-4 md:hidden">
+        {isLoading ? (
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="card p-4 space-y-3 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-canvas-100 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-canvas-100 rounded w-1/2" />
+                  <div className="h-3 bg-canvas-100 rounded w-1/4" />
+                </div>
+              </div>
+              <div className="h-10 bg-canvas-100 rounded-lg" />
+            </div>
+          ))
+        ) : products.length === 0 ? (
+          <div className="card p-8 text-center text-ink-muted">
+            No paintings yet — add your first one!
+          </div>
+        ) : (
+          products.map(p => (
+            <div key={p.id} className="card p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-canvas-100 flex-shrink-0">
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xl">🎨</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink truncate">{p.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-ink-muted">{p.category}</span>
+                    {p.is_featured && (
+                      <span className="badge bg-canvas-100 text-canvas-700 text-[9px] px-1.5 py-0">Featured</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs py-2 border-t border-b border-canvas-50">
+                <div>
+                  <p className="text-ink-muted">Price</p>
+                  <p className="font-bold text-canvas-700 mt-0.5">₹{p.price?.toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-ink-muted">Stock</p>
+                  <p className={`font-semibold mt-0.5 ${p.stock === 0 ? 'text-blush' : 'text-ink'}`}>
+                    {p.stock === 0 ? 'Sold Out' : p.stock}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-ink-muted">Status</p>
+                  <span className={`badge mt-0.5 text-[10px] px-2 py-0 ${p.is_available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {p.is_available ? 'Visible' : 'Hidden'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => handleToggle(p)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-canvas-50 text-ink-muted hover:bg-canvas-100 text-xs font-medium transition-colors"
+                >
+                  {p.is_available ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Show</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => openEdit(p)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-medium transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => handleDelete(p)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-blush hover:bg-red-100 text-xs font-medium transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Slide-over Form */}

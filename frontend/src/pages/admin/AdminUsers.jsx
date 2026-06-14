@@ -17,7 +17,8 @@ export default function AdminUsers() {
         <p className="text-ink-muted mt-1">{users.length} registered users</p>
       </div>
 
-      <div className="card overflow-hidden">
+      {/* Desktop User Table */}
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -68,6 +69,64 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List (shown only on mobile) */}
+      <div className="space-y-4 md:hidden">
+        {isLoading ? (
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="card p-4 space-y-3 animate-pulse">
+              <div className="h-4 bg-canvas-100 rounded w-1/3" />
+              <div className="h-3 bg-canvas-100 rounded w-1/2" />
+            </div>
+          ))
+        ) : users.length === 0 ? (
+          <div className="card p-8 text-center text-ink-muted">
+            No users yet
+          </div>
+        ) : (
+          users.map(u => (
+            <div key={u.id} className="card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-canvas-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-canvas-700 font-bold text-xs">{u.full_name?.[0]?.toUpperCase()}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink truncate">{u.full_name}</p>
+                  <p className="text-xs text-ink-muted truncate">{u.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs py-2 border-t border-canvas-50">
+                <div>
+                  <p className="text-ink-muted">Phone</p>
+                  <p className="font-medium text-ink mt-0.5">{u.phone || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-ink-muted">Joined</p>
+                  <p className="font-medium text-ink mt-0.5">
+                    {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-canvas-50 text-xs">
+                <div>
+                  <span className="text-ink-muted mr-1">Role:</span>
+                  <span className={`badge text-[10px] ${u.role === 'admin' ? 'bg-canvas-100 text-canvas-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {u.role}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-ink-muted mr-1">Status:</span>
+                  <span className={`badge text-[10px] ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {u.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

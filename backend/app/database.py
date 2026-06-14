@@ -14,16 +14,23 @@ DATABASE_URL = os.getenv(
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 
+# Disable SSL requirement on localhost database connections to improve speed
+connect_args = {
+    "statement_cache_size": 0,
+    "prepared_statement_cache_size": 0,
+    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+}
+if "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
+    connect_args["ssl"] = "require"
+
+# Re-enable connection pooling (removing NullPool) while avoiding prepared statement errors behind PgBouncer
 engine = create_async_engine(
     DATABASE_URL,
-    poolclass=NullPool,
     echo=False,
-    connect_args={
-        "ssl": "require",
-        "statement_cache_size": 0,
-        "prepared_statement_cache_size": 0,
-        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
-    },
+    pool_size=15,
+    max_overflow=25,
+    pool_recycle=1800,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = sessionmaker(

@@ -63,7 +63,8 @@ export default function AdminOrders() {
         ))}
       </div>
 
-      <div className="card overflow-hidden">
+      {/* Desktop Order Table */}
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -116,6 +117,67 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List (shown only on mobile) */}
+      <div className="space-y-4 md:hidden">
+        {isLoading ? (
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="card p-4 space-y-3 animate-pulse">
+              <div className="h-4 bg-canvas-100 rounded w-1/3" />
+              <div className="h-3 bg-canvas-100 rounded w-1/2" />
+              <div className="h-10 bg-canvas-100 rounded-lg" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="card p-8 text-center text-ink-muted">
+            No orders found
+          </div>
+        ) : (
+          filtered.map(order => (
+            <div key={order.id} className="card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-ink">#{order.order_number}</span>
+                <span className="text-xs text-ink-muted">
+                  {new Date(order.created_at).toLocaleDateString('en-IN')}
+                </span>
+              </div>
+
+              <div className="space-y-1 text-xs text-ink-muted">
+                <p><span className="font-medium text-ink">Customer:</span> {order.shipping_name}</p>
+                <p><span className="font-medium text-ink">Location:</span> {order.shipping_city}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-xs py-2 border-t border-b border-canvas-50">
+                <div>
+                  <p className="text-ink-muted">Total</p>
+                  <p className="font-bold text-canvas-700 mt-0.5">₹{order.total?.toLocaleString('en-IN')}</p>
+                </div>
+                <div>
+                  <p className="text-ink-muted">Payment</p>
+                  <span className={`badge mt-0.5 text-[9px] px-2 py-0 ${order.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {order.payment_status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-ink-muted">Status</p>
+                  <span className={`badge mt-0.5 text-[9px] px-2 py-0 capitalize ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {order.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={() => openEdit(order)}
+                  className="px-4 py-2 rounded-lg bg-canvas-100 text-canvas-700 hover:bg-canvas-200 text-xs font-semibold transition-colors"
+                >
+                  Update Status
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Edit Modal */}
